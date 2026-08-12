@@ -1,0 +1,561 @@
+# Monoidal Category 扭结不变量符号计算包：开发计划
+
+## 1. 项目目标
+
+构建一个面向数学实验的 Python 包，通过用户提供的有限维 R 矩阵计算 framed braid closure，并为后续扩展到一般 ribbon category、平面 tangle 图和更多扭结不变量保留稳定接口。
+
+第一版优先保证：
+
+- 数学约定明确；
+- 所有计算保持符号精确；
+- 对象和态射具有严格的 domain/codomain 类型检查；
+- 用户可以更换 R 矩阵，而不必重新构造 tangle；
+- 明确区分“完成一次矩阵求值”和“已经验证得到不变量”；
+- 代码可测试、可序列化、便于以后升级。
+
+第一版不以高性能或任意扭结图输入为目标。
+
+## 2. 总体架构
+
+```mermaid
+flowchart TD
+    C["CategorySpec<br/>生成对象、结构和关系"]
+    O["ObjectExpr<br/>规范化 tensor word"]
+    M["Morphism AST<br/>Compose、Tensor、Braid、Cup、Cap、Twist"]
+    B["BraidMorphism<br/>紧凑 braid word"]
+    F["RMatrixFunctor<br/>对象和生成态射的矩阵像"]
+    S["Symbolic Domain<br/>普通符号与 Grassmann 代数"]
+    E["Exact Evaluator<br/>矩阵、迹和闭合"]
+    
+    C --> O
+    C --> M
+    O --> M
+    B --> M
+    S --> F
+    M --> F
+    F --> E
+```
+
+架构分成三层：
+
+1. **抽象范畴层**：记录对象、态射、张量、对偶、braiding、cup、cap 和 twist，不包含具体 R 矩阵。
+2. **符号与表示层**：记录普通符号、Grassmann 变量、精确矩阵以及用户给出的 R 矩阵函子。
+3. **求值层**：把抽象态射映射成矩阵，执行复合、张量积、闭合和迹运算，并报告验证状态。
+
+## 3. 已确定的数学约定
+
+### 3.1 范畴类型
+
+第一版内部使用 strict linear pivotal ribbon category 的接口：
+
+- 结合子和 unitors 不作为显式 AST 节点；
+- tensor object 使用扁平 tensor word；
+- 双对偶严格识别为原对象；
+- 保留 braiding、左右 cup/cap 和 twist 的显式节点；
+- 第一版结构态射均为偶态射。
+
+### 3.2 Unit object
+
+Unit object 使用空 tensor word：
+
+```text
+I         -> ()
+V         -> (V,)
+V tensor W -> (V, W)
+```
+
+因此 `I tensor A` 和 `A tensor I` 在构造时自然规范化为 `A`。
+
+不同范畴的 unit 由 `category_id` 区分。对象 `I`、恒等态射 `id_I` 和标量态射 `s: I -> I` 是三个不同概念。
+
+### 3.3 Grassmann 变量
+
+符号引擎完整支持反交换 Grassmann 变量：
+
+```text
+theta_i theta_j = -theta_j theta_i
+theta_i^2 = 0
+```
+
+每个符号表达式能够报告 `EVEN`、`ODD`、`MIXED` 或 `ZERO` parity。
+
+第一版 R 矩阵元只允许偶 Grassmann 表达式或零。例如：
+
+```text
+q + theta_1 theta_2   允许
+q + theta_1           拒绝
+```
+
+符号引擎仍允许独立构造和计算任意奇表达式。完整的奇 R 矩阵、graded basis 和 Koszul tensor product 留到后续 supercategory 扩展。
+
+### 3.4 R 矩阵约定
+
+用户必须明确声明输入类型：
+
+- `convention="check"`：输入满足 braid relation 的 `check_R`；
+- `convention="quantum"`：输入满足 quantum Yang-Baxter equation 的 `R`，由程序使用 swap 转换为 `check_R`。
+
+第一版默认推荐用户直接输入 `check_R`，避免交换算子约定造成混淆。
+
+### 3.5 Framing 和闭合
+
+第一版计算 framed braid closure。一个完全闭合的 tangle 必须具有类型：
+
+```text
+I -> I
+```
+
+其矩阵表示是 `1 x 1`，最终返回唯一的符号元素。
+
+R 矩阵本身不保证产生扭结不变量。程序必须分别报告：
+
+- 矩阵尺寸是否正确；
+- R 是否可逆；
+- Yang-Baxter 方程是否成立；
+- quantum trace/closure 数据是否兼容；
+- 结果只是 raw evaluation，还是通过了当前实现能够检查的不变量条件。
+
+## 4. 核心数据结构
+
+### 4.1 `CategorySpec`
+
+职责：记录范畴签名、结构能力和用户关系。
+
+计划字段：
+
+```python
+CategorySpec(
+    id: str,
+    name: str,
+    scalar_domain: SymbolicDomain,
+    strict: bool = True,
+    linear: bool = True,
+    braided: bool = True,
+    rigid: bool = True,
+    pivotal: bool = True,
+    ribbon: bool = True,
+    object_generators: dict[str, ObjectGenerator],
+    morphism_generators: dict[str, MorphismGenerator],
+    relations: tuple[Relation, ...],
+)
+```
+
+第一版面向用户的入口只要求一个生成对象 `V`，但内部数据结构允许多个生成对象。
+
+### 4.2 `ObjectExpr`
+
+对象使用不可变、可哈希的规范化 tensor word：
+
+```python
+ObjectExpr(
+    category_id: str,
+    factors: tuple[ObjectFactor, ...],
+)
+```
+
+`ObjectFactor` 至少记录：
+
+```python
+ObjectFactor(
+    generator_id: str,
+    dual: bool,
+)
+```
+
+规范化规则：
+
+- unit 是空 tuple；
+- tensor 通过 tuple 拼接实现；
+- 不保存括号；
+- `dual(A tensor B) = dual(B) tensor dual(A)`；
+- strict pivotal 模式下 `dual(dual(A)) = A`；
+- 禁止对不同 `category_id` 的对象做 tensor。
+
+### 4.3 `Morphism` AST
+
+每个态射节点不可变、可哈希，并缓存或可靠计算：
+
+```python
+Morphism(
+    category_id: str,
+    dom: ObjectExpr,
+    cod: ObjectExpr,
+    node: MorphismNode,
+)
+```
+
+第一版节点：
+
+- `Identity`；
+- `Generator`；
+- `Compose`；
+- `Tensor`；
+- `Braiding` / inverse braiding；
+- `LeftEvaluation`、`RightEvaluation`；
+- `LeftCoevaluation`、`RightCoevaluation`；
+- `Twist`；
+- `Scale`；
+- `Add`。
+
+构造器必须立即检查：
+
+- 复合时前一态射的 codomain 等于后一态射的 domain；
+- 相加的态射属于同一个 hom-set；
+- tensor 两侧属于同一个范畴；
+- cup、cap 和 braiding 的对象方向正确；
+- scalar morphism 的类型是 `I -> I`。
+
+基础规范化：
+
+- 扁平化嵌套的 `Compose`、`Tensor` 和 `Add`；
+- 消去复合中的 identity；
+- 消去 tensor 中的 `id_I`；
+- `Scalar(s) tensor f` 可规范化为 `Scale(s, f)`；
+- 不在第一版自动执行通用 Reidemeister/string-diagram 重写。
+
+### 4.4 `BraidMorphism`
+
+braid word 使用紧凑节点：
+
+```python
+BraidMorphism(
+    object: ObjectExpr,
+    strands: int,
+    word: tuple[int, ...],
+)
+```
+
+例如：
+
+```python
+BraidMorphism(V, strands=3, word=(1, -2, 1))
+```
+
+表示 `sigma_1 sigma_2^-1 sigma_1`，其 domain 和 codomain 都是 `V^tensor 3`。
+
+验证规则：
+
+- `strands >= 1`；
+- 每个生成元满足 `1 <= abs(i) < strands`；
+- 正数表示正 crossing，负数表示 inverse crossing；
+- `word=()` 表示对应 tensor power 上的 identity；
+- 能够计算 inverse、writhe，并在需要时展开成一般 `Morphism` AST。
+
+### 4.5 `RMatrixFunctor`
+
+R 矩阵属于函子/表示层，不存入抽象 `Braiding` 节点。
+
+计划接口：
+
+```python
+RMatrixFunctor(
+    source: CategorySpec,
+    object_map: dict[ObjectGenerator, VectorSpaceSpec],
+    r_matrices: dict[tuple[ObjectExpr, ObjectExpr], RMatrixSpec],
+    evaluation_map: dict,
+    coevaluation_map: dict,
+    twist_map: dict,
+    trace_data: TraceData | None,
+)
+```
+
+固定矩阵约定：
+
+- `f: A -> B` 的矩阵形状是 `dim(B) x dim(A)`；
+- `f.then(g)` 的矩阵是 `M_g @ M_f`；
+- tensor basis 使用固定的字典序；
+- 第一版使用普通 Kronecker product；
+- R 的所有矩阵元必须通过偶性检查；
+- 所有对象像的维数必须为正整数。
+
+### 4.6 `ExactEvaluator`
+
+求值器递归解释态射：
+
+- `Identity` -> 单位矩阵；
+- `Compose` -> 精确矩阵乘法；
+- `Tensor` -> Kronecker product；
+- `Braiding` -> 用户提供的 `check_R` 或其逆；
+- cup/cap/twist -> 函子中配置的矩阵；
+- `Add`/`Scale` -> 精确矩阵加法和标量乘法；
+- 闭合结果 `I -> I` -> 返回 `1 x 1` 矩阵的唯一元素。
+
+求值应使用缓存，但缓存键只能依赖不可变 AST 和函子配置标识。
+
+## 5. 符号域设计
+
+### 5.1 普通系数
+
+第一版使用 SymPy 处理：
+
+- 整数和有理数；
+- 普通交换符号；
+- Laurent 幂；
+- 有理函数；
+- 形式指数；
+- 展开、因式分解、代入和零判断。
+
+所有公开表达式由包自己的薄封装管理，避免让范畴层直接依赖 SymPy 的内部类结构。
+
+### 5.2 Grassmann 单项式
+
+Grassmann 单项式使用有序变量集合或整数 bitset 表示。bitset 方案优先，因为它可以快速完成：
+
+- 重复变量检测；
+- degree 和 parity 计算；
+- 乘积变量集合合并；
+- 规范顺序符号计算。
+
+Grassmann 表达式使用稀疏映射：
+
+```python
+dict[GrassmannMonomial, BaseScalarExpr]
+```
+
+### 5.3 除法和指数
+
+若 `x = a + n`，其中 `a` 是可逆的 degree-0 部分、`n` 幂零，则使用有限几何级数计算 `x^-1`。
+
+纯奇元素如 `theta_1` 不可逆，`1 / theta_1` 必须报明确错误。
+
+指数对幂零部分有限展开。若表达式可写成可交换的 `a + n`，计划计算：
+
+```text
+exp(a + n) = exp(a) * exp(n)
+```
+
+其中 `exp(n)` 自动有限截断。对于不满足安全拆分条件的表达式，保留为形式表达式或报告当前不支持，不擅自使用错误恒等式。
+
+## 6. 态射相等性的边界
+
+第一版明确区分：
+
+1. **语法相等**：规范化 AST 完全相同；
+2. **关系相等**：由范畴关系或 string-diagram 重写得到；
+3. **表示下相等**：在指定 R 矩阵函子下，两个精确矩阵相同。
+
+第一版的 `==` 只表示语法相等。
+
+第一版实现表示下的精确验证：
+
+```python
+verify_equal(f, g, functor=model)
+```
+
+通用 string-diagram 等价判定和自动 Reidemeister 重写不属于第一版范围。
+
+## 7. 计划中的包结构
+
+```text
+monoidal-knot/
+├── pyproject.toml
+├── README.md
+├── src/
+│   └── monoidal_knot/
+│       ├── __init__.py
+│       ├── symbolic/
+│       │   ├── base.py
+│       │   ├── grassmann.py
+│       │   ├── parity.py
+│       │   └── matrix.py
+│       ├── category/
+│       │   ├── spec.py
+│       │   ├── objects.py
+│       │   ├── morphisms.py
+│       │   ├── structural.py
+│       │   └── relations.py
+│       ├── braid/
+│       │   ├── word.py
+│       │   └── closure.py
+│       ├── functor/
+│       │   ├── r_matrix.py
+│       │   ├── trace.py
+│       │   └── evaluator.py
+│       ├── validation/
+│       │   ├── yang_baxter.py
+│       │   └── invariant.py
+│       └── serialization/
+│           └── json.py
+├── examples/
+│   ├── basic_grassmann.py
+│   ├── custom_r_matrix.py
+│   └── jones_r_matrix.py
+└── tests/
+    ├── test_grassmann.py
+    ├── test_objects.py
+    ├── test_morphisms.py
+    ├── test_braid.py
+    ├── test_r_matrix.py
+    └── test_closure.py
+```
+
+实际初始化项目时，可直接让仓库根目录承担上面 `monoidal-knot/` 的角色，不再额外嵌套一层同名目录。
+
+## 8. 分阶段实施计划
+
+### 阶段 0：项目骨架与约定
+
+- [x] 创建 Python 包骨架和测试配置；
+- [x] 固定 Python 最低版本；
+- [x] 固定矩阵行列、复合顺序、tensor basis 和 crossing 符号约定；
+- [x] 写最小 README 和开发命令；
+- [x] 建立异常类型与验证报告类型。
+
+验收条件：包可以安装、导入，空测试集和静态检查能够运行。
+
+### 阶段 1：CategorySpec、对象和态射 AST
+
+- [ ] `CategorySpec`；
+- [ ] 对象生成元和规范化 tensor word；
+- [ ] unit object 与 dual；
+- [ ] identity、generator、compose、tensor；
+- [ ] braiding、cup、cap、twist；
+- [ ] add、scale；
+- [ ] domain/codomain 类型检查；
+- [ ] 基础 AST 规范化和哈希。
+
+验收条件：unit、结合、dual 和 typed composition 测试通过；非法复合在构造时被拒绝。
+
+### 阶段 2：符号与 Grassmann 引擎
+
+- [ ] 普通符号薄封装；
+- [ ] Grassmann 变量注册表；
+- [ ] bitset 单项式；
+- [ ] 规范化加减乘法；
+- [ ] parity 检测；
+- [ ] 安全除法；
+- [ ] 幂和指数；
+- [ ] 与精确矩阵元素互操作。
+
+验收条件：精确通过反交换、幂零、逆元和指数的单元测试；不能把有奇部分的 R 矩阵元误判为偶元素。
+
+### 阶段 3：BraidMorphism
+
+- [ ] braid word 解析和验证；
+- [ ] identity braid；
+- [ ] inverse 和 writhe；
+- [ ] 紧凑 braid 节点；
+- [ ] 展开到一般 Morphism AST；
+- [ ] framed closure 的抽象表示。
+
+验收条件：基本 braid relation 两侧可以构造，并且在合格的 R 表示下精确求值得到相同矩阵。
+
+### 阶段 4：RMatrixFunctor 与精确求值器
+
+- [ ] 对象维数映射；
+- [ ] `check_R` 输入；
+- [ ] quantum R 到 `check_R` 的转换；
+- [ ] R 逆矩阵；
+- [ ] AST 递归求值；
+- [ ] braid word 的局部 R 作用；
+- [ ] ordinary trace；
+- [ ] quantum trace；
+- [ ] cup/cap/twist 映射；
+- [ ] `I -> I` 标量提取。
+
+验收条件：同一个 braid 可以使用两套不同 R 数据求值；所有结果保持精确符号形式。
+
+### 阶段 5：验证器与第一个完整示例
+
+- [ ] R 尺寸和偶性验证；
+- [ ] 可逆性验证；
+- [ ] braid-form Yang-Baxter 方程验证；
+- [ ] quantum-form Yang-Baxter 方程验证；
+- [ ] trace/closure 兼容条件验证；
+- [ ] 区分 raw evaluation 与 verified invariant；
+- [ ] 加入一个二维 Jones R 矩阵示例；
+- [ ] 计算 unknot、简单 framed links 和 trefoil 示例；
+- [ ] 明确记录 framing 和归一化约定。
+
+验收条件：已知示例与独立手算或可信公式一致；验证报告不会把未验证的用户 R 数据称为扭结不变量。
+
+### 阶段 6：文档和可复现实验
+
+- [ ] 写用户自定义 R 矩阵教程；
+- [ ] 写 Grassmann 偶矩阵元示例；
+- [ ] 写 convention 错误的诊断示例；
+- [ ] JSON 序列化 Category/Object/Morphism/Braid 配置；
+- [ ] 保存每次实验的 R、braid word、trace 数据和验证状态。
+
+验收条件：新用户可以只阅读 README 和示例，完成一次自定义 R 的 framed braid closure 计算。
+
+## 9. 第一版用户 API 草案
+
+```python
+from monoidal_knot import (
+    RibbonCategory,
+    GrassmannSymbol,
+    Symbol,
+    Matrix,
+    RMatrixFunctor,
+    QuantumTrace,
+    Braid,
+)
+
+q = Symbol("q")
+theta1 = GrassmannSymbol("theta1")
+theta2 = GrassmannSymbol("theta2")
+
+C = RibbonCategory("experiment")
+V = C.object("V")
+I = C.unit
+
+assert I @ V == V
+assert V @ I == V
+
+check_R = Matrix([
+    # 用户给出的偶 Grassmann 矩阵元
+])
+
+model = RMatrixFunctor(
+    source=C,
+    object_map={V: 2},
+    check_r={(V, V): check_R},
+    trace=QuantumTrace(mu=mu),
+)
+
+report = model.verify()
+
+b = Braid(V, strands=3, word=(1, -2, 1))
+value = model.close(b)
+
+print(report)
+print(value)
+```
+
+最终 API 名称可以在实现阶段微调，但数学对象之间的分层和职责不应改变。
+
+## 10. 测试原则
+
+- 符号测试必须使用精确相等，不用浮点近似；
+- Grassmann 乘法同时测试结果和符号；
+- 每个 AST 构造器都测试合法和非法类型；
+- unit object、`id_I` 和 scalar morphism 分别测试；
+- Yang-Baxter 方程两侧独立构造后比较；
+- 对用户输入的 R，验证失败必须给出失败条件和非零残差；
+- 有限测试或若干样例相等不能被描述成一般数学证明；
+- Jones 示例必须记录使用的 R、trace、framing 和变量约定。
+
+## 11. 第一版之外的升级方向
+
+- 完整 monoidal supercategory 和奇 R 矩阵元；
+- graded basis、奇态射和 Koszul tensor product；
+- 多对象/多颜色 tangles；
+- port graph/string diagram 中间表示；
+- Reidemeister 和 ribbon relations 重写；
+- PD code、Gauss code、DT code 输入；
+- 稀疏矩阵和 tensor-network 求值；
+- HOMFLY-PT、Alexander 和一般 Reshetikhin-Turaev 后端；
+- 自动生成计算证书和实验报告。
+
+## 12. 实现约定的当前状态
+
+- [x] Python 最低版本：3.12；
+- [x] SymPy 最低版本：1.14，且第一版限制在 2.0 以下；
+- [x] braid word 的执行、拼接和显示方向；
+- [x] 正 crossing 对应 `check_R`；
+- [x] cup/cap 的左右类型和矩阵 basis 顺序；
+- [x] framed closure 默认要求显式 categorical/quantum trace，不静默使用 ordinary trace；
+- [ ] Jones 示例的具体变量和归一化约定在阶段 5 决定；阶段 0 只要求每个示例完整记录变量替换、framing 和归一化。
+
+这些约定一旦进入已发布的序列化格式，就不应在没有版本迁移的情况下改变。
