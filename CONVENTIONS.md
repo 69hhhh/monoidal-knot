@@ -84,6 +84,14 @@ sigma_i^(-1)  -> check_R^(-1)
 
 上述代数映射是正负 crossing 的最终权威定义；图形渲染必须服从它。
 
+对 colored crossing，负的 `(A, B)` crossing 具有类型 `A tensor B -> B tensor A`，因此其
+矩阵是 `check_R[(B, A)].inverse()`，而不是 `check_R[(A, B)].inverse()`。当输入声明为
+quantum R 时，程序使用 tensor-factor swap `P_(A,B)` 转换：
+
+```text
+check_R_(A,B) = P_(A,B) @ R_(A,B)
+```
+
 ## Cup、cap 与 dual
 
 为避免不同教材对 left/right dual 的命名差异，公开文档和错误信息必须同时给出态射类型。
@@ -106,6 +114,10 @@ coev_dual_right(A):    I -> A tensor dual(A)
 - 缺少 trace 数据时必须报错，不得静默退化成 ordinary matrix trace。
 - closure 保留 blackboard framing，不自动进行 writhe 修正。
 - twist 只在 AST 中显式出现或用户显式请求 framing correction 时应用。
+
+阶段 4 的 `QuantumTrace(weights={...})` 使用 tensor-乘法权重，并按
+`qtr_X(f) = Tr(mu_X @ M_f)` 求值。该公式是显式求值约定；权重与 R、cup/cap、twist 的兼容性
+要到阶段 5 验证。在此之前，返回值只能称为 raw categorical framed-closure evaluation。
 
 实现与报告必须区分 raw matrix evaluation、categorical framed closure 和经过额外条件验证、
 归一化后的 ambient-isotopy invariant。

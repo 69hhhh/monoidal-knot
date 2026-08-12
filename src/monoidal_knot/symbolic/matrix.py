@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from monoidal_knot.errors import ExactMatrixError, ScalarDomainError
+from monoidal_knot.errors import ExactMatrixError, NonInvertibleError, ScalarDomainError
 from monoidal_knot.symbolic.base import ScalarExpr, ScalarInput, coerce_scalar
 from monoidal_knot.symbolic.grassmann import GrassmannAlgebra
 from monoidal_knot.symbolic.parity import Parity
@@ -154,6 +154,71 @@ class ExactMatrix:
                 row.append(value)
             rows.append(row)
         return ExactMatrix(rows)
+
+    def trace(self) -> ScalarExpr:
+        """Return the ordinary exact trace of a square matrix."""
+
+        if self.shape[0] != self.shape[1]:
+            raise ExactMatrixError(
+                f"Cannot take the trace of a nonsquare matrix with shape {self.shape}."
+            )
+        result = ScalarExpr()
+        for index in range(self.shape[0]):
+            result += self[index, index]
+        return result
+
+    def inverse(self) -> ExactMatrix:
+        """Return the exact inverse using Gauss--Jordan elimination.
+
+        The first version only implements ordinary even matrices.  Supporting
+        odd matrix entries would require graded bases and Koszul signs.
+        """
+
+        if self.shape[0] != self.shape[1]:
+            raise ExactMatrixError(f"Cannot invert a nonsquare matrix with shape {self.shape}.")
+        self.require_even_entries(context="matrix inversion")
+        size = self.shape[0]
+        augmented = [
+            list(row) + [ScalarExpr(int(row_index == column_index)) for column_index in range(size)]
+            for row_index, row in enumerate(self.rows)
+        ]
+
+        for column in range(size):
+            pivot_row: int | None = None
+            pivot_inverse: ScalarExpr | None = None
+            for candidate in range(column, size):
+                try:
+                    inverse = augmented[candidate][column].inverse()
+                except NonInvertibleError:
+                    continue
+                pivot_row = candidate
+                pivot_inverse = inverse
+                break
+            if pivot_row is None or pivot_inverse is None:
+                raise NonInvertibleError(
+                    f"The exact matrix is singular or has no invertible pivot in column {column}."
+                )
+            if pivot_row != column:
+                augmented[column], augmented[pivot_row] = (
+                    augmented[pivot_row],
+                    augmented[column],
+                )
+
+            augmented[column] = [value * pivot_inverse for value in augmented[column]]
+            for row_index in range(size):
+                if row_index == column:
+                    continue
+                factor = augmented[row_index][column]
+                if factor.is_zero:
+                    continue
+                augmented[row_index] = [
+                    value - factor * pivot_value
+                    for value, pivot_value in zip(
+                        augmented[row_index], augmented[column], strict=True
+                    )
+                ]
+
+        return ExactMatrix([row[size:] for row in augmented])
 
     def _require_same_shape(self, other: ExactMatrix, *, operation: str) -> None:
         if self.shape != other.shape:

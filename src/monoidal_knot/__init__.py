@@ -33,6 +33,14 @@ from monoidal_knot.errors import (
     UnsupportedFeatureError,
     ValidationError,
 )
+from monoidal_knot.functor import (
+    ExactEvaluator,
+    QuantumTrace,
+    RMatrixConvention,
+    RMatrixFunctor,
+    RMatrixSpec,
+    verify_equal,
+)
 from monoidal_knot.symbolic import (
     ExactMatrix,
     GrassmannAlgebra,
@@ -63,6 +71,7 @@ __all__ = [
     "DualPosition",
     "EvaluationError",
     "EvaluationNode",
+    "ExactEvaluator",
     "ExactMatrix",
     "ExactMatrixError",
     "FramedClosure",
@@ -76,6 +85,10 @@ __all__ = [
     "ObjectExpr",
     "ObjectFactor",
     "Parity",
+    "QuantumTrace",
+    "RMatrixConvention",
+    "RMatrixFunctor",
+    "RMatrixSpec",
     "ScalarDomainError",
     "ScalarExpr",
     "SerializationError",
@@ -89,4 +102,5 @@ __all__ = [
     "ValidationReport",
     "__version__",
     "coerce_scalar",
+    "verify_equal",
 ]

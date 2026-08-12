@@ -3,8 +3,8 @@
 `monoidal-knot` 是一个处于 pre-alpha 阶段的 Python 包，目标是对 braided monoidal / ribbon
 category、R 矩阵和 framed braid closure 进行精确符号计算。
 
-当前已完成阶段 1 的类型化范畴 AST、阶段 2 的精确标量/Grassmann/矩阵基础层，以及阶段 3 的
-紧凑 colored braid word 和 framed closure 结构。尚未实现 R 矩阵函子或矩阵求值器。
+当前已完成阶段 1 的类型化范畴 AST、阶段 2 的精确标量/Grassmann/矩阵基础层、阶段 3 的
+紧凑 colored braid word，以及阶段 4 的 R 矩阵函子与精确求值器。
 现阶段可用的公共能力包括：
 
 - 基础异常层级；
@@ -17,10 +17,13 @@ category、R 矩阵和 framed braid closure 进行精确符号计算。
 - 普通交换符号与精确有理系数的 `ScalarExpr` 薄封装；
 - 显式 `GrassmannAlgebra` 注册表、bitset 单项式、反交换和幂零运算；
 - parity 检测、有限幂零逆元、整数幂和精确指数；
-- 不可变 `ExactMatrix` 的加减、乘法、缩放、普通 Kronecker product 和偶元素检查；
+- 不可变 `ExactMatrix` 的加减、乘法、缩放、普通 Kronecker product、精确逆、迹和偶元素检查；
 - 以整数 tuple 表示的 `BraidMorphism`，包括严格索引验证、identity、复合、inverse 和 writhe；
 - 根据每一步实际颜色顺序把 braid word 展开为一般 `Morphism` AST；
-- 检查顶部/底部颜色兼容性的 blackboard `FramedClosure` 抽象表示。
+- 检查顶部/底部颜色兼容性的 blackboard `FramedClosure` 抽象表示；
+- 显式区分 `check_R` 与 quantum R 输入的 `RMatrixFunctor`；
+- 通用 Morphism AST 和紧凑 braid word 的两条精确矩阵求值路径；
+- 显式 ordinary trace、quantum trace、cup/cap/twist/coupon 映射和 `I -> I` 标量提取。
 
 ```python
 from monoidal_knot import CategorySpec, CrossingSign
@@ -60,8 +63,56 @@ assert closure.writhe == 1
 ```
 
 生成元使用 1-based index，并按 tuple 顺序从上到下执行；第一版不支持字符串 braid 语法。
-`FramedClosure` 只记录 blackboard-framed closure 结构，不选择 trace 数据、不自动进行 writhe
-修正，也不表示 Yang--Baxter 方程或扭结不变量已经验证。相关精确求值属于阶段 4。
+`FramedClosure` 只记录 blackboard-framed closure 结构，不自动进行 writhe 修正。求值时必须
+显式提供 `QuantumTrace`；程序不会把 ordinary trace 静默当作 categorical closure，也不会因
+求值得到一个标量就声称 Yang--Baxter 方程或扭结不变量条件已经验证。
+
+## R 矩阵函子与精确求值
+
+```python
+from monoidal_knot import (
+    BraidMorphism,
+    CategorySpec,
+    ExactMatrix,
+    QuantumTrace,
+    RMatrixFunctor,
+    RMatrixSpec,
+    Symbol,
+)
+
+C = CategorySpec("r-matrix-experiment")
+V = C.object("V")
+q = Symbol("q")
+
+# check_R is the tensor-factor swap on a two-dimensional V.
+check_R = ExactMatrix([
+    [1, 0, 0, 0],
+    [0, 0, 1, 0],
+    [0, 1, 0, 0],
+    [0, 0, 0, 1],
+])
+
+model = RMatrixFunctor(
+    source=C,
+    object_map={V: 2},
+    r_matrices={(V, V): RMatrixSpec(check_R, convention="check")},
+    trace_data=QuantumTrace(weights={V: ExactMatrix([[q, 0], [0, 1]])}),
+)
+
+b = BraidMorphism(V.tensor_power(3), word=(1, -2, 1))
+assert model.evaluate_braid(b) == model.evaluate(b.expand())
+
+raw_matrix = model.evaluate_braid(b)
+raw_framed_value = model.close(b.close())
+```
+
+若输入的是满足 quantum Yang--Baxter 约定的 `R`，使用 `convention="quantum"`；函子按
+`check_R = P @ R` 和已固定的 tensor basis 顺序进行转换。负 colored crossing `(A, B)` 按
+AST 类型约定使用 `check_R[(B, A)].inverse()`。
+
+阶段 4 的构造器检查维数、矩阵形状和偶性，求值保持 `ScalarExpr`/`ExactMatrix` 的精确符号
+形式。但是 `raw_matrix` 与 `raw_framed_value` 仍是 raw evaluation；面向任意用户数据的
+Yang--Baxter、trace 兼容性和不变量验证属于阶段 5。
 
 ## 精确 Grassmann 标量和矩阵
 
@@ -114,5 +165,6 @@ py -3.12 -m venv .venv
 .venv\Scripts\python -c "import monoidal_knot; print(monoidal_knot.__version__)"
 ```
 
-这些命令验证包结构、阶段 0 约定、阶段 1 类型化 AST 和阶段 2 符号代数，不代表任何
-R 矩阵、范畴关系或扭结不变量已经得到验证。
+这些命令验证包结构、阶段 0 约定、类型化 AST、符号代数、braid 结构和阶段 4 精确求值。
+其中已知 swap-R 测试精确满足基本 braid relation；这不代表任意用户 R、一般范畴关系或
+扭结不变量已经得到验证。

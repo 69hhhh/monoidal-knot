@@ -440,19 +440,23 @@ monoidal-knot/
 
 ### 阶段 4：RMatrixFunctor 与精确求值器
 
-- [ ] 对象维数映射；
-- [ ] `check_R` 输入；
-- [ ] quantum R 到 `check_R` 的转换；
-- [ ] R 逆矩阵；
-- [ ] AST 递归求值；
-- [ ] braid word 的局部 R 作用；
-- [ ] 在合格的 R 表示下精确验证基本 braid relation；
-- [ ] ordinary trace；
-- [ ] quantum trace；
-- [ ] cup/cap/twist 映射；
-- [ ] `I -> I` 标量提取。
+- [x] 对象维数映射；
+- [x] `check_R` 输入；
+- [x] quantum R 到 `check_R` 的转换；
+- [x] R 逆矩阵；
+- [x] AST 递归求值；
+- [x] braid word 的局部 R 作用；
+- [x] 在合格的 R 表示下精确验证基本 braid relation；
+- [x] ordinary trace；
+- [x] quantum trace；
+- [x] cup/cap/twist 映射；
+- [x] `I -> I` 标量提取。
 
 验收条件：同一个 braid 可以使用两套不同 R 数据求值；所有结果保持精确符号形式。
+
+实施边界：阶段 4 递归解释当前实际存在的 AST 节点，并额外支持显式配置 typed coupon 的矩阵像。
+抽象 `Morphism` 仍不加入 `Add`/`Scale`；线性组合只在 `ExactMatrix` 层发生。quantum trace
+按显式权重计算 raw categorical closure，R/trace/ribbon 数据的通用兼容性报告仍属于阶段 5。
 
 ### 阶段 5：验证器与第一个完整示例
 

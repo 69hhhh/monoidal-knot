@@ -6,6 +6,7 @@ from monoidal_knot import (
     ExactMatrix,
     ExactMatrixError,
     GrassmannAlgebra,
+    NonInvertibleError,
     Parity,
     ScalarDomainError,
     Symbol,
@@ -85,3 +86,32 @@ def test_zero_and_identity_sizes_must_be_positive() -> None:
     assert ExactMatrix.identity(2) == ExactMatrix([[1, 0], [0, 1]])
     with pytest.raises(ExactMatrixError, match="positive"):
         ExactMatrix.zeros(0, 2)
+
+
+def test_exact_trace_and_inverse_preserve_symbolic_and_grassmann_entries() -> None:
+    q = Symbol("q")
+    algebra = GrassmannAlgebra("matrix-inverse")
+    theta_1, theta_2 = algebra.symbols("theta_1", "theta_2")
+    nilpotent = theta_1 * theta_2
+    matrix = ExactMatrix([[1 + nilpotent, 0], [0, q]])
+
+    inverse = matrix.inverse()
+
+    assert matrix.trace() == q + 1 + nilpotent
+    assert inverse == ExactMatrix([[1 - nilpotent, 0], [0, 1 / q]])
+    assert matrix @ inverse == ExactMatrix.identity(2)
+    assert inverse @ matrix == ExactMatrix.identity(2)
+
+
+def test_inverse_and_trace_reject_invalid_matrix_domains() -> None:
+    algebra = GrassmannAlgebra("invalid-matrix-inverse")
+    theta = algebra.symbol("theta")
+
+    with pytest.raises(ExactMatrixError, match="nonsquare"):
+        ExactMatrix([[1, 2]]).inverse()
+    with pytest.raises(ExactMatrixError, match="nonsquare"):
+        ExactMatrix([[1, 2]]).trace()
+    with pytest.raises(ExactMatrixError, match="even entries"):
+        ExactMatrix([[1, theta], [0, 1]]).inverse()
+    with pytest.raises(NonInvertibleError, match="singular"):
+        ExactMatrix([[1, 2], [2, 4]]).inverse()
