@@ -25,6 +25,22 @@ class EvaluationError(MonoidalKnotError):
     """An exact evaluation could not be completed."""
 
 
+class SymbolicError(MonoidalKnotError):
+    """A symbolic scalar operation is invalid or unsupported."""
+
+
+class ScalarDomainError(SymbolicError):
+    """Symbolic scalars from incompatible Grassmann algebras were combined."""
+
+
+class NonInvertibleError(SymbolicError):
+    """A symbolic scalar has no inverse in the implemented coefficient domain."""
+
+
+class ExactMatrixError(MonoidalKnotError):
+    """An exact matrix is malformed or an operation has incompatible shapes."""
+
+
 class ValidationError(MonoidalKnotError):
     """A validation request or report is malformed."""
 

@@ -15,6 +15,24 @@
 
 这里的 strict 是内部表示约定，不声称用户给出的具体范畴在数学上字面严格。
 
+阶段 2 不向抽象态射 AST 加入 `Add`、`Scale`、零态射或 `I -> I` 标量态射。线性加法和
+标量乘法只出现在符号矩阵层；如果以后需要抽象态射的线性组合，将作为单独能力设计。
+
+## 精确标量与 Grassmann 代数
+
+- 普通交换系数由 SymPy 表达式承担，并统一封装为 `ScalarExpr`。
+- Python/SymPy 浮点数、无穷、未定义值和非交换 SymPy 符号不得进入精确标量域。
+- Grassmann 生成元必须属于一个显式 `GrassmannAlgebra` 注册表；不存在进程全局注册表。
+- 两个独立注册表即使使用相同文本 ID，也不会被静默视为同一个 Grassmann 代数。
+- 普通交换标量可以嵌入任意 Grassmann 代数；两个不同 Grassmann 注册表的元素不能混算。
+- Grassmann 单项式以注册顺序对应的 bitset 表示，乘法按递增 bit 顺序规范化并计算符号。
+- `ZERO`、`EVEN`、`ODD`、`MIXED` 描述表达式中全部非零单项式的 parity；零视为可接受的偶元素。
+- 只有 degree-0 部分非零的 Grassmann 元素可求逆，逆元使用有限幂零级数精确计算。
+- 幂当前限于整数；指数把 degree-0 部分交给 SymPy，并对正 Grassmann 次数部分有限截断。
+
+`ExactMatrix.tensor` 是本文件 tensor basis 约定下的普通 Kronecker product，不包含 Koszul
+符号。完整 supercategory、graded basis 和 Koszul tensor product 不属于第一版范围。
+
 ## 矩阵与复合
 
 - 向量表示为列向量。
@@ -105,4 +123,3 @@ coev_dual_right(A):    I -> A tensor dual(A)
 - 返回的是 raw framed value 还是已验证、已归一化的不变量。
 
 新增变量表示不得静默改变既有序列化数据的含义。
-
