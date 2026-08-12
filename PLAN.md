@@ -119,28 +119,20 @@ R 矩阵本身不保证产生扭结不变量。程序必须分别报告：
 
 ### 4.1 `CategorySpec`
 
-职责：记录范畴签名、结构能力和用户关系。
+职责：提供稳定的范畴身份和对象、coupon、结构态射工厂。
 
-计划字段：
+阶段 1 字段：
 
 ```python
 CategorySpec(
     id: str,
-    name: str,
-    scalar_domain: SymbolicDomain,
-    strict: bool = True,
-    linear: bool = True,
-    braided: bool = True,
-    rigid: bool = True,
-    pivotal: bool = True,
-    ribbon: bool = True,
-    object_generators: dict[str, ObjectGenerator],
-    morphism_generators: dict[str, MorphismGenerator],
-    relations: tuple[Relation, ...],
+    name: str | None = None,
 )
 ```
 
-第一版面向用户的入口只要求一个生成对象 `V`，但内部数据结构允许多个生成对象。
+`id` 是对象和态射使用的语义身份；同一个 `id` 表示同一个范畴。第一版固定使用
+strict pivotal ribbon 表示，不暴露一组恒为真的能力开关。标量域、关系注册表和生成元注册表
+等到有实际消费者时再加入。内部数据结构从阶段 1 起支持多个生成对象。
 
 ### 4.2 `ObjectExpr`
 
@@ -177,7 +169,6 @@ ObjectFactor(
 
 ```python
 Morphism(
-    category_id: str,
     dom: ObjectExpr,
     cod: ObjectExpr,
     node: MorphismNode,
@@ -187,30 +178,29 @@ Morphism(
 第一版节点：
 
 - `Identity`；
-- `Generator`；
+- 用户自定义的 typed `Coupon`；
 - `Compose`；
 - `Tensor`；
-- `Braiding` / inverse braiding；
+- 正、负 colored `Braiding`；
 - `LeftEvaluation`、`RightEvaluation`；
 - `LeftCoevaluation`、`RightCoevaluation`；
-- `Twist`；
-- `Scale`；
-- `Add`。
+- `Twist` / inverse twist。
+
+`Add` 和 `Scale` 依赖标量域、零判定和系数规范化，因此移到阶段 2，不在结构 AST
+中先放无语义的占位节点。
 
 构造器必须立即检查：
 
 - 复合时前一态射的 codomain 等于后一态射的 domain；
-- 相加的态射属于同一个 hom-set；
 - tensor 两侧属于同一个范畴；
 - cup、cap 和 braiding 的对象方向正确；
-- scalar morphism 的类型是 `I -> I`。
+- 手动组装的 AST node payload 与外层 domain/codomain 一致。
 
 基础规范化：
 
-- 扁平化嵌套的 `Compose`、`Tensor` 和 `Add`；
+- 扁平化嵌套的 `Compose` 和 `Tensor`；
 - 消去复合中的 identity；
 - 消去 tensor 中的 `id_I`；
-- `Scalar(s) tensor f` 可规范化为 `Scale(s, f)`；
 - 不在第一版自动执行通用 Reidemeister/string-diagram 重写。
 
 ### 4.4 `BraidMorphism`
@@ -219,8 +209,7 @@ braid word 使用紧凑节点：
 
 ```python
 BraidMorphism(
-    object: ObjectExpr,
-    strands: int,
+    objects: ObjectExpr,
     word: tuple[int, ...],
 )
 ```
@@ -228,18 +217,20 @@ BraidMorphism(
 例如：
 
 ```python
-BraidMorphism(V, strands=3, word=(1, -2, 1))
+BraidMorphism(V.tensor(W).tensor(V), word=(1, -2, 1))
 ```
 
-表示 `sigma_1 sigma_2^-1 sigma_1`，其 domain 和 codomain 都是 `V^tensor 3`。
+表示带初始颜色词 `(V, W, V)` 的 `sigma_1 sigma_2^-1 sigma_1`。每次 crossing
+交换相邻对象，所以 codomain 由整个 word 作用后的对象顺序决定，不再假定等于 domain。
 
 验证规则：
 
-- `strands >= 1`；
+- `strands` 从 `objects` 的 factor 数量导出且至少为 1；
 - 每个生成元满足 `1 <= abs(i) < strands`；
 - 正数表示正 crossing，负数表示 inverse crossing；
 - `word=()` 表示对应 tensor power 上的 identity；
-- 能够计算 inverse、writhe，并在需要时展开成一般 `Morphism` AST。
+- 能够计算 bottom object word、inverse、writhe，并在需要时展开成一般 `Morphism` AST；
+- colored closure 必须另外检查闭合后各分量的颜色兼容性。
 
 ### 4.5 `RMatrixFunctor`
 
@@ -405,19 +396,20 @@ monoidal-knot/
 
 ### 阶段 1：CategorySpec、对象和态射 AST
 
-- [ ] `CategorySpec`；
-- [ ] 对象生成元和规范化 tensor word；
-- [ ] unit object 与 dual；
-- [ ] identity、generator、compose、tensor；
-- [ ] braiding、cup、cap、twist；
-- [ ] add、scale；
-- [ ] domain/codomain 类型检查；
-- [ ] 基础 AST 规范化和哈希。
+- [x] 最小 `CategorySpec`；
+- [x] 多对象生成元和规范化 tensor word；
+- [x] unit object 与 chosen pivotal dual；
+- [x] identity、用户自定义 typed coupon、compose、tensor；
+- [x] 正负 colored braiding、cup、cap、twist；
+- [x] domain/codomain 类型检查；
+- [x] 基础 AST 规范化和哈希。
 
-验收条件：unit、结合、dual 和 typed composition 测试通过；非法复合在构造时被拒绝。
+验收条件：unit、结合、dual、typed composition、多对象 crossing 和任意 tensor-word coupon
+测试通过；非法复合及 node/type 不一致在构造时被拒绝。阶段 1 不依赖或处理 Grassmann 变量。
 
 ### 阶段 2：符号与 Grassmann 引擎
 
+- [ ] `Add`、`Scale` 和 scalar morphism 的类型及规范化；
 - [ ] 普通符号薄封装；
 - [ ] Grassmann 变量注册表；
 - [ ] bitset 单项式；
