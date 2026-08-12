@@ -1,5 +1,6 @@
 """Exact symbolic experiments with braided monoidal and ribbon categories."""
 
+from monoidal_knot.braid import BraidMorphism, FramedClosure
 from monoidal_knot.category import (
     BraidingNode,
     CategorySpec,
@@ -47,6 +48,7 @@ __version__ = "0.0.1"
 
 __all__ = [
     "DEFAULT_CONVENTIONS",
+    "BraidMorphism",
     "BraidingNode",
     "CategoryMismatchError",
     "CategorySpec",
@@ -63,6 +65,7 @@ __all__ = [
     "EvaluationNode",
     "ExactMatrix",
     "ExactMatrixError",
+    "FramedClosure",
     "GrassmannAlgebra",
     "GrassmannMonomial",
     "IdentityNode",

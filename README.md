@@ -3,8 +3,8 @@
 `monoidal-knot` 是一个处于 pre-alpha 阶段的 Python 包，目标是对 braided monoidal / ribbon
 category、R 矩阵和 framed braid closure 进行精确符号计算。
 
-当前已完成阶段 1 的类型化范畴 AST 和阶段 2 的精确标量/Grassmann/矩阵基础层，尚未实现
-紧凑 braid word、R 矩阵函子或矩阵求值器。
+当前已完成阶段 1 的类型化范畴 AST、阶段 2 的精确标量/Grassmann/矩阵基础层，以及阶段 3 的
+紧凑 colored braid word 和 framed closure 结构。尚未实现 R 矩阵函子或矩阵求值器。
 现阶段可用的公共能力包括：
 
 - 基础异常层级；
@@ -17,7 +17,10 @@ category、R 矩阵和 framed braid closure 进行精确符号计算。
 - 普通交换符号与精确有理系数的 `ScalarExpr` 薄封装；
 - 显式 `GrassmannAlgebra` 注册表、bitset 单项式、反交换和幂零运算；
 - parity 检测、有限幂零逆元、整数幂和精确指数；
-- 不可变 `ExactMatrix` 的加减、乘法、缩放、普通 Kronecker product 和偶元素检查。
+- 不可变 `ExactMatrix` 的加减、乘法、缩放、普通 Kronecker product 和偶元素检查；
+- 以整数 tuple 表示的 `BraidMorphism`，包括严格索引验证、identity、复合、inverse 和 writhe；
+- 根据每一步实际颜色顺序把 braid word 展开为一般 `Morphism` AST；
+- 检查顶部/底部颜色兼容性的 blackboard `FramedClosure` 抽象表示。
 
 ```python
 from monoidal_knot import CategorySpec, CrossingSign
@@ -37,6 +40,28 @@ assert C.identity(V.tensor(W)).then(coupon) == coupon
 这里的相等是规范化后的**语法相等**，尚不自动应用 braid relation、snake identity 或
 一般 string-diagram 重写。抽象态射 AST 不提供 `Add`、`Scale` 或标量态射；线性运算只在
 符号矩阵层发生。
+
+## Braid word 与 framed closure
+
+```python
+from monoidal_knot import BraidMorphism, CategorySpec
+
+C = CategorySpec("braid-experiment")
+V = C.object("V")
+
+b = BraidMorphism(V.tensor_power(3), word=(1, -2, 1))
+expanded = b.expand()
+closure = b.close()
+
+assert expanded.dom == b.dom
+assert expanded.cod == b.cod
+assert b.inverse().inverse() == b
+assert closure.writhe == 1
+```
+
+生成元使用 1-based index，并按 tuple 顺序从上到下执行；第一版不支持字符串 braid 语法。
+`FramedClosure` 只记录 blackboard-framed closure 结构，不选择 trace 数据、不自动进行 writhe
+修正，也不表示 Yang--Baxter 方程或扭结不变量已经验证。相关精确求值属于阶段 4。
 
 ## 精确 Grassmann 标量和矩阵
 

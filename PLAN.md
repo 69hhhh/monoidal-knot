@@ -425,14 +425,18 @@ monoidal-knot/
 
 ### 阶段 3：BraidMorphism
 
-- [ ] braid word 解析和验证；
-- [ ] identity braid；
-- [ ] inverse 和 writhe；
-- [ ] 紧凑 braid 节点；
-- [ ] 展开到一般 Morphism AST；
-- [ ] framed closure 的抽象表示。
+- [x] 整数 tuple braid word 的解释和验证；
+- [x] identity braid；
+- [x] inverse 和 writhe；
+- [x] 紧凑 braid 节点；
+- [x] 展开到一般 Morphism AST；
+- [x] framed closure 的抽象表示。
 
-验收条件：基本 braid relation 两侧可以构造，并且在合格的 R 表示下精确求值得到相同矩阵。
+结构验收条件：基本 braid relation 两侧可以构造为类型正确的 AST；colored closure 会拒绝顶部和
+底部对象词不一致的 braid。字符串 braid 语法不属于本阶段范围。
+
+原计划中“在合格的 R 表示下精确求值得到相同矩阵”的数学验收需要阶段 4 的函子和求值器，
+按当前实施决定延后到阶段 4，不把本阶段的结构测试表述为 Yang--Baxter 验证。
 
 ### 阶段 4：RMatrixFunctor 与精确求值器
 
@@ -442,6 +446,7 @@ monoidal-knot/
 - [ ] R 逆矩阵；
 - [ ] AST 递归求值；
 - [ ] braid word 的局部 R 作用；
+- [ ] 在合格的 R 表示下精确验证基本 braid relation；
 - [ ] ordinary trace；
 - [ ] quantum trace；
 - [ ] cup/cap/twist 映射；
