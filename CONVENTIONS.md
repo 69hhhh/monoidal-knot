@@ -122,16 +122,47 @@ coev_dual_right(A):    I -> A tensor dual(A)
 实现与报告必须区分 raw matrix evaluation、categorical framed closure 和经过额外条件验证、
 归一化后的 ambient-isotopy invariant。
 
-## Jones 示例：阶段 5 决定
+## Jones 示例：阶段 5 约定
 
-阶段 0 不固定 Jones 示例的变量名、变量替换或归一化公式。阶段 5 可以同时支持 `A`、`q`、
-`t` 等表示，但每个示例必须显式记录：
+二维示例使用交换变量 `q`（声明为非零）和 basis `(00, 01, 10, 11)`：
 
-- 使用的 R 矩阵与 trace 数据；
-- crossing 和 framing 约定；
-- 主变量及变量之间的替换关系；
-- writhe 或其他归一化因子；
-- unknot 的归一化值；
-- 返回的是 raw framed value 还是已验证、已归一化的不变量。
+```text
+check_R = [[q, 0, 0, 0],
+           [0, 0, 1, 0],
+           [0, 1, q-q^-1, 0],
+           [0, 0, 0, q]]
+mu = diag(q, q^-1)
+alpha = q^2
+beta = 1
+overall_scale = (q+q^-1)^-1
+```
 
-新增变量表示不得静默改变既有序列化数据的含义。
+正 crossing 仍按本文前述约定对应 `check_R`。`QuantumTrace` 先计算保留 blackboard
+framing 的 raw 值 `Tr(mu^tensor-n rho(b))`；完整验证通过后，`MarkovTraceParameters`
+按以下公式归一化：
+
+```text
+V(b-hat) = overall_scale * alpha^(-writhe(b)) * beta^(-n)
+           * Tr(mu^tensor-n rho(b)).
+```
+
+这一总缩放选择给出 `V(unknot)=1`。变量替换固定为 `t=q^-2`；在本 crossing/手性约定下，
+闭辫 `sigma_1^3` 是右手 trefoil，并得到 `V(t)=t+t^3-t^4`。二分支 unlink 和正 Hopf link
+分别得到 `q+q^-1` 与 `q^-1+q^-5`。
+
+验证器使用 enhanced Yang--Baxter operator 条件：`check_R` 与 `mu tensor mu` 交换，并精确
+检查
+
+```text
+Tr_2(check_R     (mu tensor mu)) = alpha beta mu
+Tr_2(check_R^-1  (mu tensor mu)) = alpha^-1 beta mu.
+```
+
+所有必需条件通过前，结果只能称为 raw framed evaluation。当前证书限于 homogeneous
+单对象 R 数据；这不是一般 colored ribbon category 不变量的完备判定。新增变量表示不得
+静默改变既有序列化数据的含义。
+
+`verify_yang_baxter(object=None)` 是较弱且独立的检查：它仅断言所选 homogeneous
+`check_R` 的 braid-form YBE 和对应 quantum R 的 quantum-form YBE 残差严格为零。此检查
+不包含可逆性，因此一般只能称为 Yang--Baxter equation 的解；只有加上可逆性后才得到
+braid-group generator 的像。它也不检查 trace/Markov 条件，不能据此称为扭结不变量。

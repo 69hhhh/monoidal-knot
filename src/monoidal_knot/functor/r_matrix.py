@@ -28,6 +28,7 @@ from monoidal_knot.symbolic import ExactMatrix, ScalarExpr
 
 if TYPE_CHECKING:
     from monoidal_knot.functor.evaluator import ExactEvaluator
+    from monoidal_knot.validation import InvariantEvaluation, ValidationReport
 
 
 class RMatrixConvention(StrEnum):
@@ -187,6 +188,30 @@ class RMatrixFunctor:
 
     def close(self, closure: FramedClosure) -> ScalarExpr:
         return self._exact_evaluator().close(closure)
+
+    def verify(self) -> ValidationReport:
+        """Validate R, both Yang--Baxter forms, and enhanced trace conditions."""
+
+        from monoidal_knot.validation import validate_functor
+
+        return validate_functor(self)
+
+    def verify_yang_baxter(
+        self,
+        object_expr: ObjectExpr | None = None,
+    ) -> ValidationReport:
+        """Validate only homogeneous YBE, without invariant requirements."""
+
+        from monoidal_knot.validation import validate_yang_baxter
+
+        return validate_yang_baxter(self, object_expr)
+
+    def evaluate_invariant(self, closure: FramedClosure) -> InvariantEvaluation:
+        """Return raw data and a normalized invariant only after exact validation."""
+
+        from monoidal_knot.validation import evaluate_invariant
+
+        return evaluate_invariant(self, closure)
 
     def extract_scalar(self, morphism: Morphism) -> ScalarExpr:
         return self._exact_evaluator().extract_scalar(morphism)

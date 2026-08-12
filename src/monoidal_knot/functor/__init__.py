@@ -6,10 +6,11 @@ from monoidal_knot.functor.r_matrix import (
     RMatrixFunctor,
     RMatrixSpec,
 )
-from monoidal_knot.functor.trace import QuantumTrace
+from monoidal_knot.functor.trace import MarkovTraceParameters, QuantumTrace
 
 __all__ = [
     "ExactEvaluator",
+    "MarkovTraceParameters",
     "QuantumTrace",
     "RMatrixConvention",
     "RMatrixFunctor",

@@ -4,7 +4,8 @@
 category、R 矩阵和 framed braid closure 进行精确符号计算。
 
 当前已完成阶段 1 的类型化范畴 AST、阶段 2 的精确标量/Grassmann/矩阵基础层、阶段 3 的
-紧凑 colored braid word，以及阶段 4 的 R 矩阵函子与精确求值器。
+紧凑 colored braid word、阶段 4 的 R 矩阵函子与精确求值器，以及阶段 5 的 homogeneous
+R/trace 验证链和第一个完整 Jones 示例。
 现阶段可用的公共能力包括：
 
 - 基础异常层级；
@@ -24,6 +25,9 @@ category、R 矩阵和 framed braid closure 进行精确符号计算。
 - 显式区分 `check_R` 与 quantum R 输入的 `RMatrixFunctor`；
 - 通用 Morphism AST 和紧凑 braid word 的两条精确矩阵求值路径；
 - 显式 ordinary trace、quantum trace、cup/cap/twist/coupon 映射和 `I -> I` 标量提取。
+- R 尺寸、偶性、可逆性、braid-form 与 quantum-form Yang--Baxter 精确验证；
+- enhanced Yang--Baxter trace 权重的交换性及正负 Markov 稳定化验证；
+- 明确区分 `raw_evaluation` 与 `verified_invariant` 的闭合求值结果。
 
 ```python
 from monoidal_knot import CategorySpec, CrossingSign
@@ -111,8 +115,54 @@ raw_framed_value = model.close(b.close())
 AST 类型约定使用 `check_R[(B, A)].inverse()`。
 
 阶段 4 的构造器检查维数、矩阵形状和偶性，求值保持 `ScalarExpr`/`ExactMatrix` 的精确符号
-形式。但是 `raw_matrix` 与 `raw_framed_value` 仍是 raw evaluation；面向任意用户数据的
-Yang--Baxter、trace 兼容性和不变量验证属于阶段 5。
+形式。`model.close(...)` 仍只返回 raw framed value；阶段 5 新增的 `model.verify()` 和
+`model.evaluate_invariant(...)` 才执行完整验证。若任何必需检查失败或缺失，后者的
+`normalized_value` 为 `None`，分类保持 `raw_evaluation`。
+
+如果实验只关心 Yang--Baxter 方程，不需要不变量证书，可以使用轻量入口：
+
+```python
+ybe_report = model.verify_yang_baxter()       # 单生成对象时自动选择
+ybe_report = model.verify_yang_baxter(V)      # 多生成对象时显式选择 homogeneous R(V,V)
+
+assert ybe_report.verified
+```
+
+该入口只精确检查 braid-form YBE，以及由 `R = P @ check_R` 得到的 quantum-form YBE。
+它不要求 R 可逆，也不要求 trace、Markov 参数或 framing normalization。因而通过只表示
+“所选 homogeneous R 满足 YBE”，不表示它给出了 braid-group 表示或扭结不变量。需要后一
+结论时仍须使用 `model.verify()`；需要归一化闭合值时使用 `model.evaluate_invariant(...)`。
+
+## 完整 Jones 示例
+
+[examples/jones_r_matrix.py](examples/jones_r_matrix.py) 使用二维 homogeneous `check_R`：
+
+```text
+check_R = [[q, 0, 0, 0],
+           [0, 0, 1, 0],
+           [0, 1, q-q^-1, 0],
+           [0, 0, 0, q]]
+mu = diag(q, q^-1)
+```
+
+显式 Markov 参数为 `alpha=q^2`、`beta=1`，总缩放为 `(q+q^-1)^-1`。对 `n` 股闭辫
+`b`，writhe 为 `w`，示例返回
+
+```text
+V(b-hat) = (q+q^-1)^-1 q^(-2w) Tr(mu^tensor-n rho(b)).
+```
+
+因此 unknot 为 `1`，二分支 unlink 为 `q+q^-1`，正 Hopf link 为 `q^-1+q^-5`；右手
+trefoil（闭合 `sigma_1^3`）为 `q^-2+q^-6-q^-8`。令 `t=q^-2`，后者就是
+`t+t^3-t^4`。这些等式由测试直接以精确符号形式核对；示例运行命令：
+
+```powershell
+.venv\Scripts\python examples\jones_r_matrix.py
+```
+
+这里 raw trace 是 blackboard-framed evaluation；只有在 R、两种 YBE、trace 权重和正负
+Markov 稳定化全部通过后，才应用 writhe/股数/总缩放并标记为 `verified_invariant`。当前完整
+证书限于单对象 homogeneous R；一般多颜色系统仍保持 raw evaluation 状态。
 
 ## 精确 Grassmann 标量和矩阵
 
@@ -165,6 +215,6 @@ py -3.12 -m venv .venv
 .venv\Scripts\python -c "import monoidal_knot; print(monoidal_knot.__version__)"
 ```
 
-这些命令验证包结构、阶段 0 约定、类型化 AST、符号代数、braid 结构和阶段 4 精确求值。
-其中已知 swap-R 测试精确满足基本 braid relation；这不代表任意用户 R、一般范畴关系或
-扭结不变量已经得到验证。
+这些命令验证包结构、阶段 0 约定、类型化 AST、符号代数、braid 结构、阶段 4 精确求值和
+阶段 5 homogeneous invariant 证书。Jones 示例通过不代表任意用户 R、一般多颜色 YBE 系统
+或一般范畴关系已经得到验证；每个模型都必须检查自己的 `ValidationReport`。

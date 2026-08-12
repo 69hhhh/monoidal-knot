@@ -35,6 +35,7 @@ from monoidal_knot.errors import (
 )
 from monoidal_knot.functor import (
     ExactEvaluator,
+    MarkovTraceParameters,
     QuantumTrace,
     RMatrixConvention,
     RMatrixFunctor,
@@ -50,7 +51,19 @@ from monoidal_knot.symbolic import (
     Symbol,
     coerce_scalar,
 )
-from monoidal_knot.validation import CheckStatus, ValidationCheck, ValidationReport
+from monoidal_knot.validation import (
+    CheckStatus,
+    EvaluationClassification,
+    InvariantEvaluation,
+    ValidationCheck,
+    ValidationReport,
+    braid_yang_baxter_residual,
+    check_to_quantum,
+    evaluate_invariant,
+    quantum_yang_baxter_residual,
+    validate_functor,
+    validate_yang_baxter,
+)
 
 __version__ = "0.0.1"
 
@@ -69,6 +82,7 @@ __all__ = [
     "CrossingSign",
     "DefinitionError",
     "DualPosition",
+    "EvaluationClassification",
     "EvaluationError",
     "EvaluationNode",
     "ExactEvaluator",
@@ -78,6 +92,8 @@ __all__ = [
     "GrassmannAlgebra",
     "GrassmannMonomial",
     "IdentityNode",
+    "InvariantEvaluation",
+    "MarkovTraceParameters",
     "MonoidalKnotError",
     "Morphism",
     "MorphismTypeError",
@@ -101,6 +117,12 @@ __all__ = [
     "ValidationError",
     "ValidationReport",
     "__version__",
+    "braid_yang_baxter_residual",
+    "check_to_quantum",
     "coerce_scalar",
+    "evaluate_invariant",
+    "quantum_yang_baxter_residual",
+    "validate_functor",
+    "validate_yang_baxter",
     "verify_equal",
 ]

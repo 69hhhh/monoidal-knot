@@ -460,17 +460,24 @@ monoidal-knot/
 
 ### 阶段 5：验证器与第一个完整示例
 
-- [ ] R 尺寸和偶性验证；
-- [ ] 可逆性验证；
-- [ ] braid-form Yang-Baxter 方程验证；
-- [ ] quantum-form Yang-Baxter 方程验证；
-- [ ] trace/closure 兼容条件验证；
-- [ ] 区分 raw evaluation 与 verified invariant；
-- [ ] 加入一个二维 Jones R 矩阵示例；
-- [ ] 计算 unknot、简单 framed links 和 trefoil 示例；
-- [ ] 明确记录 framing 和归一化约定。
+- [x] R 尺寸和偶性验证；
+- [x] 可逆性验证；
+- [x] braid-form Yang-Baxter 方程验证；
+- [x] quantum-form Yang-Baxter 方程验证；
+- [x] trace/closure 兼容条件验证；
+- [x] 区分 raw evaluation 与 verified invariant；
+- [x] 加入一个二维 Jones R 矩阵示例；
+- [x] 计算 unknot、简单 framed links 和 trefoil 示例；
+- [x] 明确记录 framing 和归一化约定。
 
 验收条件：已知示例与独立手算或可信公式一致；验证报告不会把未验证的用户 R 数据称为扭结不变量。
+
+实施边界：阶段 5 的完整证书针对单对象 homogeneous R 数据。验证器精确检查 `check_R`
+的 braid-form YBE、由 `R = P @ check_R` 得到的 quantum-form YBE，以及 enhanced
+Yang--Baxter operator 的 trace-weight 交换和正负 Markov 稳定化偏迹恒等式。一般多颜色
+heterogeneous YBE 系统仍可在阶段 4 API 中求值，但当前不会被提升为 `verified_invariant`。
+另提供 `verify_yang_baxter(object=None)` 轻量入口；它只检查所选 homogeneous R 的两种
+YBE 形式，不要求可逆性、trace 或 Markov 数据，也不产生不变量声明。
 
 ### 阶段 6：文档和可复现实验
 
@@ -559,6 +566,6 @@ print(value)
 - [x] 正 crossing 对应 `check_R`；
 - [x] cup/cap 的左右类型和矩阵 basis 顺序；
 - [x] framed closure 默认要求显式 categorical/quantum trace，不静默使用 ordinary trace；
-- [ ] Jones 示例的具体变量和归一化约定在阶段 5 决定；阶段 0 只要求每个示例完整记录变量替换、framing 和归一化。
+- [x] Jones 示例固定使用 `q`、`t=q^-2`、`alpha=q^2`、`beta=1` 和 `V(unknot)=1` 的总缩放；raw blackboard framing 与 verified normalization 分开记录。
 
 这些约定一旦进入已发布的序列化格式，就不应在没有版本迁移的情况下改变。
