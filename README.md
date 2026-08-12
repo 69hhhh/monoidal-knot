@@ -5,7 +5,7 @@ category、R 矩阵和 framed braid closure 进行精确符号计算。
 
 当前已完成阶段 1 的类型化范畴 AST、阶段 2 的精确标量/Grassmann/矩阵基础层、阶段 3 的
 紧凑 colored braid word、阶段 4 的 R 矩阵函子与精确求值器，以及阶段 5 的 homogeneous
-R/trace 验证链和第一个完整 Jones 示例。
+R/trace 验证链和第一个完整 Jones 示例，并完成阶段 6 的教程及可复现实验 JSON。
 现阶段可用的公共能力包括：
 
 - 基础异常层级；
@@ -189,6 +189,33 @@ Grassmann 代数必须显式创建。不同 `GrassmannAlgebra` 实例不会因�
 supercategory 扩展。
 
 数学与表示约定见 [CONVENTIONS.md](CONVENTIONS.md)。后续实现以 [PLAN.md](PLAN.md) 为路线图。
+
+## 自定义 R 与可复现实验
+
+完整的入门程序见 [examples/custom_r_experiment.py](examples/custom_r_experiment.py)。它依次声明
+范畴和对象、输入带明确 `check` convention 的 R 矩阵、设置 quantum trace、计算 framed
+closure、检查完整验证报告，最后把 R、braid word、trace 数据、raw/normalized 值和每项验证
+状态写入 `custom-r-experiment.json`：
+
+```powershell
+.venv\Scripts\python examples\custom_r_experiment.py
+```
+
+JSON 顶层包含 `schema="monoidal-knot"` 和整数 `version`。公共函数 `dumps`/`loads` 用于文本，
+`save`/`load` 用于 UTF-8 文件；未知 schema 版本会被拒绝，而不会被静默误读。支持
+`CategorySpec`、`ObjectExpr`、完整 `Morphism` AST、`BraidMorphism`、精确标量/矩阵、R/trace
+配置和 `ExperimentRecord`。验证证据在实验记录中作为便于审计的显示文本保存；加载后的报告
+保留 key、四态 status、summary、required 和 evidence 文本。
+
+另外两个可直接运行的诊断教程是：
+
+- [examples/grassmann_even_matrix.py](examples/grassmann_even_matrix.py)：构造含 `theta*eta` 的偶矩阵元并精确求逆；
+- [examples/convention_diagnostics.py](examples/convention_diagnostics.py)：诊断非法标签，并展示把 `check_R` 错标成 quantum R 后的语义偏差。
+
+`convention` 不能仅靠 YBE 是否通过来推断：错误解释后的矩阵仍可能满足 YBE。应先明确用户
+输入是否已经包含 tensor-factor swap，再把单个 braid 生成元的求值与预期算子作精确比较。
+若输入是 braid operator，应声明 `convention="check"`；未交换的 quantum R 才声明为
+`"quantum"`。
 
 ## 环境要求
 

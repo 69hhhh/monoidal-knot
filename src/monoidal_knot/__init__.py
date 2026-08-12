@@ -42,6 +42,7 @@ from monoidal_knot.functor import (
     RMatrixSpec,
     verify_equal,
 )
+from monoidal_knot.serialization import ExperimentRecord, dumps, load, loads, save, to_data
 from monoidal_knot.symbolic import (
     ExactMatrix,
     GrassmannAlgebra,
@@ -88,6 +89,7 @@ __all__ = [
     "ExactEvaluator",
     "ExactMatrix",
     "ExactMatrixError",
+    "ExperimentRecord",
     "FramedClosure",
     "GrassmannAlgebra",
     "GrassmannMonomial",
@@ -120,8 +122,13 @@ __all__ = [
     "braid_yang_baxter_residual",
     "check_to_quantum",
     "coerce_scalar",
+    "dumps",
     "evaluate_invariant",
+    "load",
+    "loads",
     "quantum_yang_baxter_residual",
+    "save",
+    "to_data",
     "validate_functor",
     "validate_yang_baxter",
     "verify_equal",

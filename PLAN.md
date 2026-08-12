@@ -481,11 +481,11 @@ YBE 形式，不要求可逆性、trace 或 Markov 数据，也不产生不变�
 
 ### 阶段 6：文档和可复现实验
 
-- [ ] 写用户自定义 R 矩阵教程；
-- [ ] 写 Grassmann 偶矩阵元示例；
-- [ ] 写 convention 错误的诊断示例；
-- [ ] JSON 序列化 Category/Object/Morphism/Braid 配置；
-- [ ] 保存每次实验的 R、braid word、trace 数据和验证状态。
+- [x] 写用户自定义 R 矩阵教程；
+- [x] 写 Grassmann 偶矩阵元示例；
+- [x] 写 convention 错误的诊断示例；
+- [x] JSON 序列化 Category/Object/Morphism/Braid 配置；
+- [x] 保存每次实验的 R、braid word、trace 数据和验证状态。
 
 验收条件：新用户可以只阅读 README 和示例，完成一次自定义 R 的 framed braid closure 计算。
 
