@@ -13,6 +13,18 @@ $minimumNodeVersion = [version]"22.13.0"
 $mainlandRegistry = "https://registry.npmmirror.com"
 $officialRegistry = "https://registry.npmjs.org"
 
+trap {
+    Write-Host ""
+    Write-Host "[Knot Atelier] Startup failed" -ForegroundColor Red
+    Write-Host $_.Exception.Message -ForegroundColor Red
+    Write-Host ""
+    Write-Host "The window will stay open so the error can be read." -ForegroundColor Yellow
+    if (-not $CheckOnly -and [Environment]::UserInteractive) {
+        Read-Host "Press Enter to close"
+    }
+    exit 1
+}
+
 function Write-Step([string]$Message) {
     Write-Host "`n[Knot Atelier] $Message" -ForegroundColor Cyan
 }
