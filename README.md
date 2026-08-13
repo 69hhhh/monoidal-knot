@@ -3,6 +3,13 @@
 `monoidal-knot` 是一个处于 pre-alpha 阶段的 Python 包，目标是对 braided monoidal / ribbon
 category、R 矩阵和 framed braid closure 进行精确符号计算。
 
+## Knot Atelier 前端
+
+仓库中的 [`frontend`](frontend) 是一个独立的浏览器扭结图编辑器，支持平面 knot/link、
+自由手绘转 Bézier、交叉点 over/under、colored braid word、项目 JSON 和 SVG 导出。它目前
+不导入 Python 包，使用独立的 `knot-drawer/v1` schema；未来通过隔离的 adapter 接入
+`BraidMorphism` 或 planar-tangle API。
+
 当前已完成阶段 1 的类型化范畴 AST、阶段 2 的精确标量/Grassmann/矩阵基础层、阶段 3 的
 紧凑 colored braid word、阶段 4 的 R 矩阵函子与精确求值器，以及阶段 5 的 homogeneous
 R/trace 验证链和第一个完整 Jones 示例，并完成阶段 6 的教程及可复现实验 JSON。
