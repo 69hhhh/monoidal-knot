@@ -18,6 +18,15 @@
 
 需要 Node.js `>=22.13.0`：
 
+在 Windows 上，推荐直接双击仓库根目录的 `start-knot-atelier.cmd`。脚本会：
+
+1. 检查 Node.js 版本；
+2. 首次运行时优先通过 npmmirror 安装锁定依赖，失败时回退到 npm 官方源；
+3. 启动本地服务并自动打开浏览器；
+4. 在终端中按 `Ctrl+C` 停止服务。
+
+也可以手动运行：
+
 ```powershell
 npm install
 npm run dev

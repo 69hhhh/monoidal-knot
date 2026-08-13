@@ -10,6 +10,10 @@ category、R 矩阵和 framed braid closure 进行精确符号计算。
 不导入 Python 包，使用独立的 `knot-drawer/v1` schema；未来通过隔离的 adapter 接入
 `BraidMorphism` 或 planar-tangle API。
 
+Windows 上最简单的启动方式：直接双击仓库根目录的
+[`start-knot-atelier.cmd`](start-knot-atelier.cmd)。首次运行会自动安装前端依赖，随后打开
+`http://localhost:3000`；保持命令窗口开启，按 `Ctrl+C` 停止。
+
 当前已完成阶段 1 的类型化范畴 AST、阶段 2 的精确标量/Grassmann/矩阵基础层、阶段 3 的
 紧凑 colored braid word、阶段 4 的 R 矩阵函子与精确求值器，以及阶段 5 的 homogeneous
 R/trace 验证链和第一个完整 Jones 示例，并完成阶段 6 的教程及可复现实验 JSON。
